@@ -1,0 +1,30 @@
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Environment
+venv/
+.env
+.venv/
+env/
+ENV/
+
+# PyTorch & YOLO temporary runs
+runs/
+weights/
+*.log
+
+# Dataset (thuong khong day toan bo dataset anh len GitHub vi dung luong lon >1GB)
+chest_xray/
+__MACOSX/
+
+# Model weights lon (neu muon quan ly qua Git LFS thi bo qua)
+*.pt
+
+# IDE / Editor
+.vscode/
+.idea/
+*.swp
+*.swo

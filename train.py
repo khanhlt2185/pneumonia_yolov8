@@ -135,14 +135,14 @@ def train(args):
         name=args.name,
         exist_ok=True,
         # Tang cuong du lieu (Data augmentation)
-        hsv_h=0.015,
-        hsv_s=0.4,
-        hsv_v=0.4,
-        degrees=10.0,
-        translate=0.1,
-        scale=0.3,
-        flipud=0.0,
-        fliplr=0.5,
+        hsv_h=0.0,      # X-quang la anh Grayscale, khong can map mau
+        hsv_s=0.0,      # Khong can bo sung do bao hoa mau
+        hsv_v=0.2,      # Thay doi do sang/toi 20% (mo phong cac loai may chup)
+        degrees=10.0,   # Xoay nhe +-10 do
+        translate=0.1,  # Dich chuyen nhe 10%
+        scale=0.1,      # Giam scale xuong 10% de tranh cat mat goc phoi
+        flipud=0.0,     # Tuyet doi khong lat doc
+        fliplr=0.0,     # Tuyet doi khong lat ngang (Giu nguyen vi tri bong tim ben trai)
         # Toi uu hoa
         optimizer="AdamW",
         lr0=0.001,

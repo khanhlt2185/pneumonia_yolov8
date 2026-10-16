@@ -114,13 +114,11 @@ def predict(image):
         status_vi = "VIÊM PHỔI"
         status_en = "PNEUMONIA"
         advice = "Phát hiện dấu hiệu nghi ngờ viêm phổi. Cần tham khảo thêm ý kiến bác sĩ chuyên khoa."
-        icon = "⚠️"
     else:
         color = (25, 135, 84)  # Mau xanh an toan
         status_vi = "BÌNH THƯỜNG"
         status_en = "NORMAL"
         advice = "Không phát hiện dấu hiệu bất thường về viêm phổi trên ảnh chụp."
-        icon = "✅"
 
     # Ve vien mau quanh anh
     border_width = 6
@@ -159,7 +157,7 @@ def predict(image):
 
     # Tao HTML ket qua chi tiet
     result_html = create_result_html(
-        pred_class_name, pred_conf, status_vi, status_en, advice, icon, confidence_dict
+        pred_class_name, pred_conf, status_vi, status_en, advice, confidence_dict
     )
 
     return annotated, result_html, confidence_dict
@@ -170,14 +168,13 @@ def create_placeholder_html():
     return """
 <div style="
     text-align: center;
-    padding: 40px 20px;
+    padding: 36px 20px;
     border: 2px dashed #3D5A99;
     border-radius: 16px;
     background: linear-gradient(135deg, #f0f4ff 0%, #e8eeff 100%);
     color: #3D5A99;
     font-family: 'Segoe UI', sans-serif;
 ">
-    <div style="font-size: 48px; margin-bottom: 12px;">🫁</div>
     <h3 style="margin: 0 0 8px 0; color: #1a3a7a;">Chờ ảnh X-quang</h3>
     <p style="margin: 0; opacity: 0.7; font-size: 14px;">
         Vui lòng tải lên ảnh X-quang phổi hoặc chọn ảnh mẫu bên dưới để bắt đầu phân tích.
@@ -191,21 +188,20 @@ def create_error_html(message):
     return f"""
 <div style="
     text-align: center;
-    padding: 30px 20px;
+    padding: 28px 20px;
     border: 2px solid #dc3545;
     border-radius: 16px;
     background: linear-gradient(135deg, #fff5f5 0%, #ffe8e8 100%);
     color: #721c24;
     font-family: 'Segoe UI', sans-serif;
 ">
-    <div style="font-size: 36px; margin-bottom: 10px;">❌</div>
     <h3 style="margin: 0 0 8px 0;">Lỗi hệ thống</h3>
     <p style="margin: 0; font-size: 14px;">{message}</p>
 </div>
 """
 
 
-def create_result_html(pred_class, pred_conf, status_vi, status_en, advice, icon, confidence_dict):
+def create_result_html(pred_class, pred_conf, status_vi, status_en, advice, confidence_dict):
     """Tao HTML hien thi ket qua phan tich chi tiet."""
     # Mau sac theo ket qua
     if pred_class == "PNEUMONIA":
@@ -240,18 +236,15 @@ def create_result_html(pred_class, pred_conf, status_vi, status_en, advice, icon
         color: white;
         box-shadow: 0 4px 20px rgba(0,0,0,0.15);
     ">
-        <div style="display: flex; align-items: center; gap: 12px;">
-            <span style="font-size: 36px;">{icon}</span>
-            <div>
-                <div style="font-size: 13px; opacity: 0.9; text-transform: uppercase; letter-spacing: 1.5px; font-weight: 600;">
-                    Kết quả chẩn đoán
-                </div>
-                <div style="font-size: 24px; font-weight: 700; margin-top: 2px;">
-                    {status_vi}
-                </div>
-                <div style="font-size: 14px; opacity: 0.85; margin-top: 2px;">
-                    {status_en} &mdash; Độ tin cậy: {conf_pct:.1f}%
-                </div>
+        <div>
+            <div style="font-size: 12px; opacity: 0.9; text-transform: uppercase; letter-spacing: 1.5px; font-weight: 600;">
+                Kết quả chẩn đoán
+            </div>
+            <div style="font-size: 24px; font-weight: 700; margin-top: 4px;">
+                {status_vi}
+            </div>
+            <div style="font-size: 14px; opacity: 0.85; margin-top: 2px;">
+                {status_en} &mdash; Độ tin cậy: {conf_pct:.1f}%
             </div>
         </div>
     </div>
@@ -266,14 +259,14 @@ def create_result_html(pred_class, pred_conf, status_vi, status_en, advice, icon
         box-shadow: 0 2px 8px rgba(0,0,0,0.04);
     ">
         <div style="font-size: 14px; font-weight: 600; color: #1a3a7a; margin-bottom: 14px;">
-            📊 Phân bố xác suất
+            Phân bố xác suất
         </div>
 
         <!-- NORMAL bar -->
         <div style="margin-bottom: 10px;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
                 <span style="font-size: 13px; font-weight: 600; color: #198754;">
-                    ✅ NORMAL (Bình thường)
+                    NORMAL (Bình thường)
                 </span>
                 <span style="font-size: 13px; font-weight: 700; color: #198754;">
                     {normal_pct:.1f}%
@@ -297,7 +290,7 @@ def create_result_html(pred_class, pred_conf, status_vi, status_en, advice, icon
         <div>
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
                 <span style="font-size: 13px; font-weight: 600; color: #dc3545;">
-                    ⚠️ PNEUMONIA (Viêm phổi)
+                    PNEUMONIA (Viêm phổi)
                 </span>
                 <span style="font-size: 13px; font-weight: 700; color: #dc3545;">
                     {pneumonia_pct:.1f}%
@@ -327,7 +320,7 @@ def create_result_html(pred_class, pred_conf, status_vi, status_en, advice, icon
         margin-bottom: 12px;
     ">
         <div style="font-size: 13px; font-weight: 600; color: {text_color}; margin-bottom: 4px;">
-            💡 Nhận xét
+            Nhận xét
         </div>
         <div style="font-size: 13px; color: #333; line-height: 1.5;">
             {advice}
@@ -343,7 +336,7 @@ def create_result_html(pred_class, pred_conf, status_vi, status_en, advice, icon
         border-top: 1px solid #e9ecef;
         font-style: italic;
     ">
-        ⚕️ Hệ thống mang tính chất hỗ trợ tham khảo kỹ thuật, không thay thế chẩn đoán y tế chính thức.
+        Lưu ý: Hệ thống mang tính chất hỗ trợ tham khảo kỹ thuật, không thay thế chẩn đoán y tế chính thức.
     </div>
 </div>
 """
@@ -632,25 +625,14 @@ def create_app():
         # === HEADER ===
         gr.HTML("""
         <div class="header-banner">
-            <div style="display: flex; align-items: center; gap: 16px;">
-                <div style="
-                    width: 56px; height: 56px;
-                    background: rgba(255,255,255,0.15);
-                    border-radius: 16px;
-                    display: flex; align-items: center; justify-content: center;
-                    font-size: 28px;
-                    border: 1px solid rgba(255,255,255,0.2);
-                    flex-shrink: 0;
-                ">🫁</div>
-                <div>
-                    <h1>Hệ Thống Nhận Diện Viêm Phổi từ Ảnh X-Quang</h1>
-                    <p>Ứng dụng trí tuệ nhân tạo phân loại ảnh X-quang phổi sử dụng kiến trúc YOLOv8 Classification</p>
-                    <div class="badge-row">
-                        <span class="badge">🤖 YOLOv8</span>
-                        <span class="badge">🏥 2 lớp: NORMAL / PNEUMONIA</span>
-                        <span class="badge">📐 224×224px</span>
-                        <span class="badge">⚡ Thời gian thực</span>
-                    </div>
+            <div>
+                <h1>Hệ Thống Nhận Diện Viêm Phổi từ Ảnh X-Quang</h1>
+                <p>Ứng dụng trí tuệ nhân tạo phân loại ảnh X-quang phổi sử dụng kiến trúc YOLOv8 Classification</p>
+                <div class="badge-row">
+                    <span class="badge">YOLOv8</span>
+                    <span class="badge">2 lớp: NORMAL / PNEUMONIA</span>
+                    <span class="badge">224×224px</span>
+                    <span class="badge">Thời gian thực</span>
                 </div>
             </div>
         </div>
@@ -662,7 +644,7 @@ def create_app():
             with gr.Column(scale=1):
                 gr.HTML("""
                 <div class="section-header">
-                    <h3>📤 Tải ảnh X-quang</h3>
+                    <h3>Tải ảnh X-quang</h3>
                     <p>Chọn hoặc kéo thả ảnh X-quang phổi vào khung bên dưới</p>
                 </div>
                 """)
@@ -675,13 +657,13 @@ def create_app():
                     elem_classes=["panel-card"],
                 )
                 predict_btn = gr.Button(
-                    "🔍  Phân Tích Ảnh X-Quang",
+                    "Phân Tích Ảnh X-Quang",
                     variant="primary",
                     size="lg",
                     elem_classes=["predict-btn"],
                 )
                 clear_btn = gr.Button(
-                    "🗑️  Xóa & Nhập ảnh mới",
+                    "Xóa & Nhập ảnh mới",
                     variant="secondary",
                     size="sm",
                 )
@@ -690,7 +672,7 @@ def create_app():
             with gr.Column(scale=1):
                 gr.HTML("""
                 <div class="section-header">
-                    <h3>📋 Kết quả phân tích</h3>
+                    <h3>Kết quả phân tích</h3>
                     <p>Kết quả chẩn đoán và phân bố xác suất</p>
                 </div>
                 """)
@@ -741,7 +723,7 @@ def create_app():
             gr.HTML("""
             <div style="margin-top: 24px;">
                 <div class="section-header">
-                    <h3>🖼️ Ảnh mẫu kiểm thử</h3>
+                    <h3>Ảnh mẫu kiểm thử</h3>
                     <p>Chọn một ảnh mẫu từ tập test để thử nghiệm nhanh — bao gồm cả ảnh NORMAL và PNEUMONIA</p>
                 </div>
             </div>
@@ -760,7 +742,7 @@ def create_app():
         gr.HTML("""
         <div style="margin-top: 24px; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px;">
             <div class="info-card">
-                <h4>📖 Hướng dẫn sử dụng</h4>
+                <h4>Hướng dẫn sử dụng</h4>
                 <ol style="padding-left: 18px; margin: 0;">
                     <li>Tải ảnh X-quang phổi lên hoặc chọn ảnh mẫu</li>
                     <li>Nhấn nút <b>"Phân Tích Ảnh X-Quang"</b></li>
@@ -769,7 +751,7 @@ def create_app():
                 </ol>
             </div>
             <div class="info-card">
-                <h4>🧠 Về mô hình AI</h4>
+                <h4>Về mô hình AI</h4>
                 <p style="margin: 0;">
                     Mô hình sử dụng kiến trúc <b>YOLOv8 Classification</b> (Ultralytics),
                     được huấn luyện trên bộ dữ liệu X-quang phổi với 2 lớp phân loại:
@@ -778,7 +760,7 @@ def create_app():
                 </p>
             </div>
             <div class="info-card">
-                <h4>⚠️ Lưu ý quan trọng</h4>
+                <h4>Lưu ý quan trọng</h4>
                 <p style="margin: 0;">
                     Kết quả từ hệ thống AI chỉ mang tính chất <b>hỗ trợ tham khảo kỹ thuật</b>.
                     Không thay thế chẩn đoán y tế chính thức từ bác sĩ chuyên khoa.
@@ -792,7 +774,7 @@ def create_app():
         gr.HTML("""
         <div class="footer-bar">
             <p style="margin: 0;">
-                🫁 Hệ thống nhận diện viêm phổi &mdash; Powered by <b>YOLOv8</b> &amp; <b>Gradio</b>
+                Hệ thống nhận diện viêm phổi &mdash; Powered by <b>YOLOv8</b> &amp; <b>Gradio</b>
                 &nbsp;|&nbsp; Đồ án nghiên cứu khoa học
             </p>
         </div>

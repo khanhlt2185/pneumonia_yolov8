@@ -1,14 +1,18 @@
 """
-Medical Image Preprocessing Pipeline for YOLOv8-Classification.
-Specialized for Kaggle Chest X-Ray (Pneumonia) Dataset.
+Pipeline Tiền Xử Lý Ảnh Y Tế Cho Mô Hình Phân Loại YOLOv8 (YOLOv8-Classification).
+Chuyên biệt cho Bộ Dữ Liệu X-quang Ngực (Viêm Phổi) từ Kaggle.
 
-Key Objectives:
-1. Re-split: Merge flawed original train/val splits and execute an 85/15 stratified
-   split to resolve the 16-image validation set limitation.
-2. Isolation: Strictly preserve the original test set (624 images) independently.
-3. Enhancement: Apply Grayscale CLAHE (clipLimit=2.0, tileGridSize=(8,8)) to highlight
-   subtle pulmonary opacities without amplifying background radiation noise.
-4. Robustness: Filter corrupted/0-byte/non-image files, resilient I/O with pathlib and cv2.
+Các Mục Tiêu Trọng Tâm:
+1. Phân chia lại tập dữ liệu (Re-split): Gộp tập train và val gốc vốn bị lỗi (val chỉ có 16 ảnh),
+   thực hiện phân chia tầng (stratified split) tỷ lệ 85% Train / 15% Validation để khắc phục
+   triệt để vấn đề tập validation quá ít ảnh, đảm bảo tính đại diện thống kê.
+2. Cô lập tập Test (Isolation): Bảo toàn nguyên vẹn và độc lập hoàn toàn tập test gốc (624 ảnh)
+   để chống rò rỉ dữ liệu (data leakage).
+3. Tăng cường ảnh y tế (CLAHE): Áp dụng cân bằng biểu đồ tần suất thích ứng giới hạn tương phản
+   (CLAHE) trên ảnh mức xám (clipLimit=2.0, tileGridSize=(8,8)) nhằm làm rõ các tổn thương
+   mờ đục phế trường (opacities) mà không gây khuếch đại nhiễu bức xạ nền.
+4. Độ tin cậy & Ổn định: Tự động loại bỏ file hỏng, file 0-byte, file rác hệ điều hành,
+   sử dụng pathlib và OpenCV với cơ chế bắt lỗi an toàn (try-except).
 """
 
 import argparse
@@ -24,14 +28,14 @@ from sklearn.model_selection import train_test_split
 try:
     from tqdm import tqdm
 except ImportError:
-    # Graceful fallback if tqdm is not installed
+    # Cơ chế dự phòng khi môi trường chưa cài đặt thư viện tqdm
     def tqdm(iterable, desc="", **kwargs):
         if desc:
             print(f"[*] {desc}...")
         return iterable
 
 
-# Global Reproducibility Seed & Processing Defaults
+# Cấu hình hạt giống ngẫu nhiên (Seed) & Các tham số tiền xử lý mặc định
 SEED: int = 42
 DEFAULT_CLIP_LIMIT: float = 2.0
 DEFAULT_TILE_GRID_SIZE: Tuple[int, int] = (8, 8)
@@ -40,23 +44,23 @@ CLASSES: List[str] = ["NORMAL", "PNEUMONIA"]
 
 
 def set_seed(seed: int = SEED) -> None:
-    """Set global random seed for python and numpy to guarantee reproducible splits."""
+    """Thiết lập hạt giống ngẫu nhiên toàn cục cho Python và NumPy nhằm đảm bảo khả năng tái lập kết quả."""
     random.seed(seed)
     np.random.seed(seed)
 
 
 def is_valid_image(file_path: Path) -> bool:
     """
-    Validate whether a file is an authentic, readable, non-empty image.
+    Kiểm tra xem một file có phải là file ảnh hợp lệ, có thể đọc được và không bị rỗng hay không.
 
-    Checks:
-    - Path existence and non-hidden/system file status (ignores .DS_Store, ._ files).
-    - Valid image extension whitelist.
-    - File size > 0 bytes.
-    - Successful cv2 image decode.
+    Các bước kiểm tra:
+    - Đường dẫn tồn tại và không phải file ẩn/file hệ thống (bỏ qua .DS_Store, ._* của macOS).
+    - Phần mở rộng thuộc danh sách định dạng ảnh cho phép.
+    - Kích thước file > 0 bytes.
+    - OpenCV giải mã và đọc ảnh thành công.
     """
     try:
-        # Ignore macOS / hidden metadata files
+        # Bỏ qua các file ẩn và file metadata của macOS / hệ điều hành
         if file_path.name.startswith(".") or file_path.name.startswith("._"):
             return False
 
@@ -66,7 +70,7 @@ def is_valid_image(file_path: Path) -> bool:
         if not file_path.is_file() or file_path.stat().st_size == 0:
             return False
 
-        # Read small probe to verify header integrity
+        # Đọc thử một phần ảnh để xác thực tính toàn vẹn của phần tiêu đề (header)
         test_img = cv2.imread(str(file_path), cv2.IMREAD_UNCHANGED)
         if test_img is None or test_img.size == 0:
             return False
@@ -82,32 +86,34 @@ def apply_clahe(
     tile_grid_size: Tuple[int, int] = DEFAULT_TILE_GRID_SIZE,
 ) -> np.ndarray:
     """
-    Apply Contrast Limited Adaptive Histogram Equalization (CLAHE) to an image.
+    Áp dụng thuật toán cân bằng biểu đồ tần suất thích ứng giới hạn tương phản (CLAHE) cho ảnh.
 
-    Medical Radiography Rationale:
-    - Global histogram equalization often blows out soft tissue and increases high-frequency noise.
-    - CLAHE operates on localized contextual tiles (tileGridSize, e.g. 8x8).
-    - clipLimit=2.0 clips histogram bins to prevent excessive amplification of radiographic noise,
-      making subtle infiltrates and consolidations sharper and distinguishable for CNN feature extraction.
+    Cơ sở khoa học trong ảnh X-quang y tế:
+    - Cân bằng biểu đồ tần suất toàn cục (Global Histogram Equalization) thường làm cháy sáng mô mềm
+      và khuếch đại mạnh nhiễu tần số cao.
+    - CLAHE chia ảnh thành các ô cục bộ theo lưới (tileGridSize, mặc định 8x8).
+    - clipLimit=2.0 giới hạn độ dốc của hàm phân phối tích lũy (CDF) nhằm tránh phóng đại nhiễu bức xạ,
+      từ đó làm nổi bật các vùng thâm nhiễm (infiltrates) và đông đặc (consolidations) phế trường,
+      giúp mạng nơ-ron CNN trích xuất đặc trưng chính xác hơn.
 
-    Args:
-        image: Single-channel (grayscale) or multi-channel NumPy array.
-        clip_limit: Threshold for contrast limiting. Default 2.0.
-        tile_grid_size: Size of grid for histogram equalization. Default (8, 8).
+    Tham số:
+        image: Mảng NumPy chứa ảnh 1 kênh (grayscale) hoặc ảnh đa kênh.
+        clip_limit: Ngưỡng giới hạn tương phản (mặc định 2.0).
+        tile_grid_size: Kích thước lưới chia ô cục bộ (mặc định (8, 8)).
 
-    Returns:
-        Enhanced single-channel (Grayscale) uint8 NumPy array.
+    Trả về:
+        Mảng NumPy kiểu uint8 chứa ảnh đơn kênh (Grayscale) đã được tăng cường độ tương phản.
     """
     if image is None or image.size == 0:
         raise ValueError("Input image is empty or None.")
 
-    # Guarantee grayscale single-channel
+    # Đảm bảo ảnh luôn ở dạng đơn kênh (Grayscale)
     if len(image.shape) == 3:
         gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     else:
         gray = image
 
-    # Ensure 8-bit depth
+    # Đảm bảo độ sâu màu 8-bit (uint8)
     if gray.dtype != np.uint8:
         gray = cv2.normalize(gray, None, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)
 
@@ -123,23 +129,23 @@ def process_and_save_image(
     tile_grid_size: Tuple[int, int] = DEFAULT_TILE_GRID_SIZE,
 ) -> bool:
     """
-    Read an image from src_path in grayscale, apply CLAHE enhancement, and save to dest_path.
+    Đọc ảnh từ src_path ở dạng mức xám (grayscale), áp dụng tăng cường CLAHE và lưu vào dest_path.
 
-    Protected with try-except to ensure zero crash on edge-case I/O faults.
+    Được bọc trong khối try-except để đảm bảo script không bao giờ bị dừng đột ngột khi gặp lỗi I/O bất thường.
     """
     try:
-        # Load directly in grayscale
+        # Đọc trực tiếp dưới dạng ảnh mức xám
         img_gray = cv2.imread(str(src_path), cv2.IMREAD_GRAYSCALE)
         if img_gray is None:
             return False
 
-        # Apply CLAHE enhancement
+        # Áp dụng thuật toán tăng cường CLAHE
         enhanced_img = apply_clahe(img_gray, clip_limit=clip_limit, tile_grid_size=tile_grid_size)
 
-        # Ensure parent destination directory exists
+        # Đảm bảo thư mục cha tại đích đến đã tồn tại
         dest_path.parent.mkdir(parents=True, exist_ok=True)
 
-        # Write out enhanced image
+        # Lưu ảnh đã được xử lý ra đĩa
         success = cv2.imwrite(str(dest_path), enhanced_img)
         return bool(success)
     except Exception as err:
@@ -152,11 +158,11 @@ def collect_images_from_dirs(
     class_name: str,
 ) -> Tuple[List[Path], int]:
     """
-    Collect and sanitize all valid image paths from a list of directory paths for a given class.
+    Thu thập và kiểm tra tính hợp lệ của tất cả các file ảnh từ danh sách thư mục cho một lớp cụ thể.
 
-    Returns:
-        valid_paths: List of verified Path objects.
-        corrupted_count: Count of skipped/corrupted/non-image files.
+    Trả về:
+        valid_paths: Danh sách đối tượng Path của các file ảnh hợp lệ.
+        corrupted_count: Số lượng file bị hỏng / bỏ qua / không phải định dạng ảnh.
     """
     valid_paths: List[Path] = []
     corrupted_count: int = 0
@@ -180,7 +186,7 @@ def print_summary_table(
     final_stats: Dict[str, Dict[str, int]],
     skipped_count: int,
 ) -> None:
-    """Print an informative, clinical-grade summary table of dataset distributions."""
+    """In bảng tổng kết thống kê chi tiết số lượng mẫu dữ liệu trước và sau tiền xử lý."""
     divider = "=" * 72
     print("\n" + divider)
     print("      CHEST X-RAY (PNEUMONIA) PREPROCESSING & SPLIT SUMMARY")
@@ -214,20 +220,20 @@ def prepare_dataset(
     tile_grid_size: Tuple[int, int] = DEFAULT_TILE_GRID_SIZE,
 ) -> None:
     """
-    Executes the end-to-end dataset preparation pipeline:
-    1. Reads and sanitizes raw input dataset (train, val, test).
-    2. Isolates the original test set without leakage.
-    3. Merges original train + val sets.
-    4. Performs a stratified split into train_ratio (default 85%) and 1 - train_ratio (15%).
-    5. Applies CLAHE enhancement to every image and writes to output_dir with identical structure.
+    Thực hiện quy trình chuẩn bị và tiền xử lý toàn diện cho tập dữ liệu:
+    1. Đọc và lọc sạch dữ liệu thô đầu vào (train, val, test).
+    2. Cô lập hoàn toàn tập test gốc để tránh hiện tượng rò rỉ dữ liệu (data leakage).
+    3. Hợp nhất hai tập train và val gốc thành một tập dữ liệu chung.
+    4. Thực hiện chia tầng (stratified split) theo tỷ lệ train_ratio (mặc định 85%) và phần còn lại cho val (15%).
+    5. Áp dụng tăng cường CLAHE cho từng ảnh và ghi ra output_dir với cấu trúc thư mục đồng nhất.
 
-    Args:
-        input_dir: Root directory of raw chest_xray dataset containing train, val, test.
-        output_dir: Destination directory for processed and enhanced YOLOv8 dataset.
-        train_ratio: Ratio for training set (e.g., 0.85).
-        seed: Random seed for reproducibility.
-        clip_limit: CLAHE clip limit.
-        tile_grid_size: CLAHE grid size tuple.
+    Tham số:
+        input_dir: Thư mục gốc chứa bộ dữ liệu thô chest_xray (gồm các thư mục con train, val, test).
+        output_dir: Thư mục đích lưu trữ bộ dữ liệu đã cân bằng và tăng cường cho YOLOv8.
+        train_ratio: Tỷ lệ phân bổ cho tập huấn luyện (mặc định 0.85 tương đương 85%).
+        seed: Hạt giống ngẫu nhiên để tái lập kết quả phân chia.
+        clip_limit: Ngưỡng giới hạn độ tương phản của CLAHE.
+        tile_grid_size: Bộ giá trị kích thước lưới chia ô của CLAHE.
     """
     set_seed(seed)
     input_dir = Path(input_dir).resolve()
@@ -236,7 +242,7 @@ def prepare_dataset(
     if not input_dir.exists():
         raise FileNotFoundError(f"Input dataset directory not found: {input_dir}")
 
-    # Validate required subfolders
+    # Kiểm tra sự tồn tại của các thư mục bắt buộc
     for split in ["train", "val", "test"]:
         split_path = input_dir / split
         if not split_path.exists():
@@ -255,7 +261,7 @@ def prepare_dataset(
     total_skipped = 0
     original_stats: Dict[str, Dict[str, int]] = {"train": {}, "val": {}, "test": {}}
 
-    # Step 1: Collect original test set (Strict Isolation)
+    # Bước 1: Thu thập tập test gốc (Cô lập hoàn toàn, không trộn lẫn)
     print("[1/4] Inspecting and sanitizing Test Set (Isolated)...")
     test_data: List[Tuple[Path, str]] = []
     for cls in CLASSES:
@@ -265,7 +271,7 @@ def prepare_dataset(
         for p in paths:
             test_data.append((p, cls))
 
-    # Step 2: Merge original train + val sets
+    # Bước 2: Gộp hai tập train và val gốc để chuẩn bị phân chia tầng lại
     print("[2/4] Merging and sanitizing Train + Val pools for Stratified Re-Split...")
     merged_train_val: List[Tuple[Path, str]] = []
     for cls in CLASSES:
@@ -279,7 +285,7 @@ def prepare_dataset(
         for p in orig_train_paths + orig_val_paths:
             merged_train_val.append((p, cls))
 
-    # Step 3: Stratified Re-split
+    # Bước 3: Phân chia tầng tập dữ liệu (85% Train / 15% Val)
     print("[3/4] Performing Stratified Split (85% Train / 15% Val)...")
     file_paths = [item[0] for item in merged_train_val]
     labels = [item[1] for item in merged_train_val]
@@ -301,7 +307,7 @@ def prepare_dataset(
         "test": test_data,
     }
 
-    # Step 4: Apply CLAHE and write to destination
+    # Bước 4: Áp dụng thuật toán tăng cường CLAHE và lưu ảnh vào thư mục đích
     print("[4/4] Applying CLAHE enhancement and writing dataset...")
     final_stats: Dict[str, Dict[str, int]] = {
         "train": {cls: 0 for cls in CLASSES},
@@ -324,14 +330,14 @@ def prepare_dataset(
             else:
                 total_skipped += 1
 
-    # Print comprehensive diagnostic summary
+    # In bảng thống kê chi tiết toàn bộ dữ liệu
     print_summary_table(original_stats, final_stats, total_skipped)
     print(f"[+] Dataset preprocessing completed successfully!")
     print(f"[+] Clean, CLAHE-enhanced dataset ready for YOLOv8 at: {output_dir}\n")
 
 
 def parse_args() -> argparse.Namespace:
-    """Parse command line arguments."""
+    """Phân tích các tham số dòng lệnh đầu vào."""
     parser = argparse.ArgumentParser(
         description="Medical Preprocessing & Stratified Splitting for Chest X-Ray YOLOv8-cls"
     )

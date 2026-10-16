@@ -18,6 +18,7 @@ weights/
 
 # Dataset (thuong khong day toan bo dataset anh len GitHub vi dung luong lon >1GB)
 chest_xray/
+dataset/
 __MACOSX/
 
 # Model weights lon (neu muon quan ly qua Git LFS thi bo qua)

@@ -346,7 +346,7 @@ def create_result_html(pred_class, pred_conf, status_vi, status_en, advice, conf
 def get_sample_images():
     """Lay danh sach mot so anh mau tu tap test, can doi giua NORMAL va PNEUMONIA."""
     samples = []
-    test_dir = Path("chest_xray/test")
+    test_dir = Path("dataset/test")
 
     if test_dir.exists():
         # Lay 5 anh NORMAL

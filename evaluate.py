@@ -8,7 +8,7 @@ Script thuc hien:
 
 Cach chay:
     python evaluate.py
-    python evaluate.py --model best_pneumonia_model.pt --data chest_xray
+    python evaluate.py --model best_pneumonia_model.pt --data dataset
 """
 
 import argparse
@@ -34,7 +34,7 @@ def parse_args():
     parser.add_argument(
         "--data",
         type=str,
-        default="chest_xray",
+        default="dataset",
         help="Duong dan toi thu muc dataset",
     )
     parser.add_argument("--imgsz", type=int, default=224, help="Kich thuoc anh")

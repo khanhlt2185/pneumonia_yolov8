@@ -1,31 +1,94 @@
-# Python cache
+# ==========================================
+# 1. Python & Cache
+# ==========================================
 __pycache__/
 *.py[cod]
 *$py.class
 *.so
+.pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+.ipynb_checkpoints/
 
-# Environment
+# ==========================================
+# 2. Virtual Environments
+# ==========================================
 venv/
-.env
 .venv/
 env/
 ENV/
+env.bak/
+venv.bak/
 
-# PyTorch & YOLO temporary runs
+# ==========================================
+# 3. Environment Variables & Secrets
+# ==========================================
+.env
+.env.*
+!.env.example
+*.local
+
+# ==========================================
+# 4. Frontend / Node.js (Vite + React)
+# ==========================================
+node_modules/
+dist/
+dist-ssr/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.eslintcache
+
+# ==========================================
+# 5. Deep Learning / YOLO Runs & Large Weights
+# (File > 100MB se bi GitHub chan, nen luu qua Drive/LFS)
+# ==========================================
 runs/
 weights/
-*.log
+*.pt
+*.pth
+*.onnx
+*.engine
+*.tflite
+*.h5
+*.pkl
+*.safetensors
+wandb/
 
-# Dataset (thuong khong day toan bo dataset anh len GitHub vi dung luong lon >1GB)
+# ==========================================
+# 6. Datasets & Large Archives
+# ==========================================
 chest_xray/
 dataset/
+datasets/
+data/
+*.zip
+*.tar
+*.tar.gz
+*.rar
+*.7z
 __MACOSX/
 
-# Model weights lon (neu muon quan ly qua Git LFS thi bo qua)
-*.pt
+# ==========================================
+# 7. Logs & Temp Files
+# ==========================================
+*.log
+logs/
+tmp/
+temp/
 
-# IDE / Editor
+# ==========================================
+# 8. IDE & Operating System
+# ==========================================
 .vscode/
 .idea/
 *.swp
 *.swo
+*~
+.DS_Store
+Thumbs.db
+desktop.ini
+

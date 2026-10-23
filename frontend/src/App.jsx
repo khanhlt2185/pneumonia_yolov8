@@ -1,63 +1,83 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Header from './components/Header';
 import DisclaimerBanner from './components/DisclaimerBanner';
-import ImageUpload from './components/ImageUpload';
-import SampleGallery from './components/SampleGallery';
-import PredictionResult from './components/PredictionResult';
+import XrayStudio from './components/XrayStudio';
+import ClinicalReport from './components/ClinicalReport';
+import SessionHistory from './components/SessionHistory';
 import Toast from './components/Toast';
 import { fetchHealth, fetchSamples, fetchImageBlob, predictImage } from './services/api';
 
 export default function App() {
+  // 1. Quản lý Theme Light / Dark
+  const [isDark, setIsDark] = useState(() => {
+    const saved = localStorage.getItem('theme');
+    if (saved) return saved === 'dark';
+    return window.matchMedia('(prefers-color-scheme: dark)').matches;
+  });
+
+  useEffect(() => {
+    if (isDark) {
+      document.documentElement.classList.add('dark');
+      localStorage.setItem('theme', 'dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+      localStorage.setItem('theme', 'light');
+    }
+  }, [isDark]);
+
+  const toggleTheme = () => setIsDark((prev) => !prev);
+
+  // 2. Trạng thái kết nối Server & Ảnh mẫu
   const [health, setHealth] = useState(null);
   const [isCheckingHealth, setIsCheckingHealth] = useState(true);
   const [samples, setSamples] = useState([]);
   const [isLoadingSamples, setIsLoadingSamples] = useState(true);
 
+  // 3. Trạng thái ảnh đang thao tác
   const [selectedFile, setSelectedFile] = useState(null);
   const [previewUrl, setPreviewUrl] = useState(null);
   const [selectedSampleId, setSelectedSampleId] = useState(null);
 
+  // 4. Trạng thái kết quả & Lịch sử phiên (chỉ trên RAM)
   const [isLoadingPrediction, setIsLoadingPrediction] = useState(false);
   const [predictionResult, setPredictionResult] = useState(null);
+  const [sessionHistory, setSessionHistory] = useState([]);
   const [toast, setToast] = useState(null);
 
-  const previewUrlRef = useRef(null);
+  // Quản lý Blob URLs trong bộ nhớ để thu hồi tránh rò rỉ RAM
+  const blobUrlsRef = useRef(new Set());
 
-  // Đảm bảo thu hồi URL.revokeObjectURL
-  const updatePreviewUrl = (newUrl, isBlobObject = true) => {
-    if (previewUrlRef.current && previewUrlRef.current.startsWith('blob:')) {
-      URL.revokeObjectURL(previewUrlRef.current);
+  const registerBlobUrl = (url) => {
+    if (url && url.startsWith('blob:')) {
+      blobUrlsRef.current.add(url);
     }
-    previewUrlRef.current = newUrl;
-    setPreviewUrl(newUrl);
   };
 
   useEffect(() => {
+    const currentBlobs = blobUrlsRef.current;
     return () => {
-      if (previewUrlRef.current && previewUrlRef.current.startsWith('blob:')) {
-        URL.revokeObjectURL(previewUrlRef.current);
-      }
+      currentBlobs.forEach((url) => URL.revokeObjectURL(url));
     };
   }, []);
 
-  // Khởi tạo kiểm tra health và nạp danh sách ảnh mẫu
+  // Khởi tạo ứng dụng: kiểm tra máy chủ và nạp ảnh mẫu
   useEffect(() => {
     const initApp = async () => {
-      // 1. Kiểm tra Health
+      // Health check
       try {
         const healthData = await fetchHealth();
         setHealth(healthData);
       } catch (err) {
         console.error('Health check failed:', err);
         setToast({
-          message: 'Không thể kết nối tới máy chủ Backend (cổng 8000). Vui lòng đảm bảo server đã chạy.',
+          message: 'Không thể kết nối máy chủ backend (cổng 8000). Vui lòng đảm bảo server đã chạy.',
           type: 'error',
         });
       } finally {
         setIsCheckingHealth(false);
       }
 
-      // 2. Nạp ảnh mẫu
+      // Nạp ảnh mẫu
       try {
         const samplesData = await fetchSamples();
         if (samplesData?.success && samplesData.samples) {
@@ -73,8 +93,8 @@ export default function App() {
     initApp();
   }, []);
 
-  // Hàm thực thi suy luận
-  const executePrediction = async (fileOrBlob, filename) => {
+  // Thực thi suy luận qua API
+  const executePrediction = async (fileOrBlob, filename, currentUrl) => {
     setIsLoadingPrediction(true);
     setPredictionResult(null);
 
@@ -82,6 +102,23 @@ export default function App() {
       const data = await predictImage(fileOrBlob, filename);
       if (data && data.success) {
         setPredictionResult(data);
+
+        // Lưu vào lịch sử phiên làm việc (tối đa 8 ca gần nhất trong RAM)
+        const historyItem = {
+          id: Date.now(),
+          previewUrl: currentUrl,
+          fileName: filename,
+          timestamp: new Date().toLocaleTimeString('vi-VN', {
+            hour: '2-digit',
+            minute: '2-digit',
+          }),
+          predictionResult: data,
+        };
+
+        setSessionHistory((prev) => [
+          historyItem,
+          ...prev.filter((item) => item.fileName !== filename),
+        ].slice(0, 8));
       } else {
         setToast({
           message: data?.error || 'Đã xảy ra lỗi khi phân tích ảnh.',
@@ -94,26 +131,26 @@ export default function App() {
         err.response?.data?.error ||
         (err.code === 'ECONNABORTED'
           ? 'Quá thời gian chờ phản hồi từ máy chủ.'
-          : 'Mất kết nối tới máy chủ. Vui lòng kiểm tra lại dịch vụ Backend.');
+          : 'Mất kết nối tới máy chủ. Vui lòng kiểm tra lại dịch vụ backend.');
       setToast({ message: errorMsg, type: 'error' });
     } finally {
       setIsLoadingPrediction(false);
     }
   };
 
-  // Khi người dùng chọn/kéo thả file ảnh từ máy tính
+  // Chọn ảnh từ máy tính (Upload hoặc kéo thả)
   const handleImageSelected = (file) => {
     setSelectedSampleId(null);
     setSelectedFile(file);
 
     const objectUrl = URL.createObjectURL(file);
-    updatePreviewUrl(objectUrl);
+    registerBlobUrl(objectUrl);
+    setPreviewUrl(objectUrl);
 
-    // Tự động kích hoạt suy luận ngay khi chọn ảnh
-    executePrediction(file, file.name);
+    executePrediction(file, file.name, objectUrl);
   };
 
-  // Khi người dùng bấm vào một ảnh mẫu
+  // Chọn ảnh mẫu từ danh sách
   const handleSelectSample = async (sample) => {
     setSelectedSampleId(sample.id);
 
@@ -121,20 +158,16 @@ export default function App() {
     const serverBase = apiUrl.replace(/\/api\/v1\/?$/, '');
     const sampleFullUrl = `${serverBase}${sample.url}`;
 
-    // Hiển thị ngay ảnh mẫu lên khung preview
-    updatePreviewUrl(sampleFullUrl, false);
-
+    setPreviewUrl(sampleFullUrl);
     setIsLoadingPrediction(true);
     setPredictionResult(null);
 
     try {
-      // Tải blob ảnh từ static files của backend
       const blob = await fetchImageBlob(sample.url);
       const filename = `${sample.id}_${sample.original_label}.jpeg`;
       setSelectedFile(new File([blob], filename, { type: 'image/jpeg' }));
 
-      // Gửi blob tới /predict
-      await executePrediction(blob, filename);
+      await executePrediction(blob, filename, sampleFullUrl);
     } catch (err) {
       console.error('Failed to load sample blob:', err);
       setToast({
@@ -145,71 +178,81 @@ export default function App() {
     }
   };
 
-  // Đặt lại trạng thái (Phân tích ảnh khác / Xóa ảnh)
+  // Chọn xem lại một ca trong lịch sử phiên
+  const handleSelectHistoryItem = (item) => {
+    setPreviewUrl(item.previewUrl);
+    setSelectedFile(new File([], item.fileName));
+    setSelectedSampleId(null);
+    setPredictionResult(item.predictionResult);
+  };
+
+  // Đặt lại trạng thái (Phân tích ảnh khác)
   const handleReset = () => {
-    updatePreviewUrl(null);
+    setPreviewUrl(null);
     setSelectedFile(null);
     setSelectedSampleId(null);
     setPredictionResult(null);
   };
 
-  return (
-    <div className="min-h-screen flex flex-col bg-slate-50 text-slate-800">
-      {/* 1. Header trên cùng */}
-      <Header health={health} isCheckingHealth={isCheckingHealth} />
+  // Xóa lịch sử phiên trong RAM
+  const handleClearHistory = () => {
+    setSessionHistory([]);
+  };
 
-      {/* 2. Nội dung chính */}
-      <main className="grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
-        {/* Banner khuyến cáo cố định theo quy định y tế */}
+  return (
+    <div className="min-h-screen flex flex-col bg-slate-50 dark:bg-[#0B0F17] text-slate-800 dark:text-slate-100 transition-colors">
+      {/* 1. Header trên cùng */}
+      <Header
+        health={health}
+        isCheckingHealth={isCheckingHealth}
+        isDark={isDark}
+        onToggleTheme={toggleTheme}
+      />
+
+      {/* 2. Không gian làm việc chính */}
+      <main className="grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-5 sm:py-6 space-y-5">
+        {/* Banner khuyến cáo y khoa rút gọn bắt buộc */}
         <DisclaimerBanner />
 
-        {/* Thư viện ảnh mẫu */}
-        <SampleGallery
-          samples={samples}
-          isLoadingSamples={isLoadingSamples}
-          selectedSampleId={selectedSampleId}
-          onSelectSample={handleSelectSample}
-          isLoadingPrediction={isLoadingPrediction}
-        />
-
-        {/* Khung chức năng chính: Upload & Kết quả phân loại */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-          {/* Cột trái: Vùng tải ảnh (5/12 cột trên màn lớn) */}
-          <div className="lg:col-span-5 space-y-4">
-            <ImageUpload
+        {/* Khung chức năng: Studio X-quang (Cột trái) & Bảng kết quả (Cột phải) */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+          {/* Cột trái: Studio X-quang, Viewer, Điều khiển Grad-CAM, Dải ảnh mẫu (7/12 cột) */}
+          <div className="lg:col-span-7">
+            <XrayStudio
               selectedFile={selectedFile}
               previewUrl={previewUrl}
+              predictionResult={predictionResult}
               onImageSelected={handleImageSelected}
               onClearImage={handleReset}
-              isLoading={isLoadingPrediction}
+              isLoadingPrediction={isLoadingPrediction}
               onError={(errMsg) => setToast({ message: errMsg, type: 'error' })}
+              samples={samples}
+              isLoadingSamples={isLoadingSamples}
+              selectedSampleId={selectedSampleId}
+              onSelectSample={handleSelectSample}
             />
           </div>
 
-          {/* Cột phải: Bảng kết quả phân loại (7/12 cột trên màn lớn) */}
-          <div className="lg:col-span-7">
-            <PredictionResult
+          {/* Cột phải: Bảng kết quả phân loại lâm sàng (5/12 cột) */}
+          <div className="lg:col-span-5">
+            <ClinicalReport
               result={predictionResult}
               isLoading={isLoadingPrediction}
               onReset={handleReset}
             />
           </div>
         </div>
+
+        {/* 3. Khay lịch sử phiên làm việc trong RAM */}
+        <SessionHistory
+          history={sessionHistory}
+          currentResult={predictionResult}
+          onSelectHistoryItem={handleSelectHistoryItem}
+          onClearHistory={handleClearHistory}
+        />
       </main>
 
-      {/* 3. Footer */}
-      <footer className="border-t border-slate-200 bg-white py-6 mt-auto">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between text-xs text-slate-500 space-y-2 sm:space-y-0">
-          <div>
-            Đồ án tốt nghiệp: Hệ thống sàng lọc viêm phổi từ ảnh X-quang ngực (YOLOv8-cls & CLAHE)
-          </div>
-          <div className="text-slate-400">
-            Môi trường: Windows • Python 3.12 • Node 22 • React 19 • Tailwind CSS v4
-          </div>
-        </div>
-      </footer>
-
-      {/* 4. Toast thông báo lỗi */}
+      {/* 4. Thông báo Toast */}
       <Toast
         message={toast?.message}
         type={toast?.type}

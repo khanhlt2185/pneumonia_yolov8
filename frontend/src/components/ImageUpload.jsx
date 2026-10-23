@@ -1,5 +1,5 @@
-import React, { useRef, useState, useEffect } from 'react';
-import { UploadCloud, FileImage, X, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import React, { useRef, useState } from 'react';
+import { UploadCloud, FileImage, X } from 'lucide-react';
 
 const MAX_SIZE_MB = 10;
 const MAX_BYTES = MAX_SIZE_MB * 1024 * 1024;

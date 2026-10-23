@@ -1,29 +1,55 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'JetBrains Mono', 'SFMono-Regular', Menlo, Monaco, Consolas, monospace;
+
+  /* Bảng màu lâm sàng chuyên dụng */
+  --color-dicom-dark: #090d14;
+  --color-surface-light: #f8fafc;
+  --color-surface-dark: #0b0f17;
+  --color-card-light: #ffffff;
+  --color-card-dark: #111827;
+  --color-border-light: #e2e8f0;
+  --color-border-dark: #1f2937;
+}
+
 @layer base {
   html {
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-family: var(--font-sans);
     scroll-behavior: smooth;
+  }
+
+  body {
+    transition: background-color 0.2s ease, color 0.2s ease;
   }
 }
 
-/* Custom scrollbars */
+/* Tùy chỉnh thanh cuộn tối giản */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: #f1f5f9;
+  background: transparent;
 }
 ::-webkit-scrollbar-thumb {
   background: #cbd5e1;
-  border-radius: 4px;
+  border-radius: 9999px;
+}
+.dark ::-webkit-scrollbar-thumb {
+  background: #334155;
 }
 ::-webkit-scrollbar-thumb:hover {
   background: #94a3b8;
 }
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: #475569;
+}
 
-/* Custom shimmer animation for skeletons */
+/* Shimmer animation khi tải dữ liệu */
 @keyframes shimmer {
   0% {
     background-position: -200% 0;
@@ -34,7 +60,13 @@
 }
 
 .animate-shimmer {
-  background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%);
+  background: linear-gradient(90deg, rgba(226, 232, 240, 0.4) 25%, rgba(203, 213, 225, 0.7) 50%, rgba(226, 232, 240, 0.4) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+.dark .animate-shimmer {
+  background: linear-gradient(90deg, rgba(30, 41, 59, 0.5) 25%, rgba(51, 65, 85, 0.8) 50%, rgba(30, 41, 59, 0.5) 75%);
   background-size: 200% 100%;
   animation: shimmer 1.5s infinite;
 }

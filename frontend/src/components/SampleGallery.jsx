@@ -1,5 +1,5 @@
 import React from 'react';
-import { Sparkles, Image as ImageIcon } from 'lucide-react';
+import { Sparkles } from 'lucide-react';
 
 export default function SampleGallery({
   samples,

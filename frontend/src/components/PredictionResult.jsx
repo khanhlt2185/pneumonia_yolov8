@@ -5,7 +5,6 @@ import {
   Clock,
   RotateCcw,
   Sparkles,
-  HelpCircle,
   FileText,
 } from 'lucide-react';
 

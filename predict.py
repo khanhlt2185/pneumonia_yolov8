@@ -22,7 +22,7 @@ def parse_args():
     parser.add_argument(
         "--model",
         type=str,
-        default="best_pneumonia_model.pt",
+        default="weights/v2/best_v2a.pt",
         help="Duong dan model",
     )
     parser.add_argument(

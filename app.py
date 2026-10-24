@@ -9,7 +9,7 @@ Chuc nang:
 
 Cach chay:
     python app.py
-    python app.py --model best_pneumonia_model.pt --port 7860
+    python app.py --model weights/v2/best_v2a.pt --port 7860
 """
 
 import argparse
@@ -28,7 +28,7 @@ def parse_args():
     parser.add_argument(
         "--model",
         type=str,
-        default="best_pneumonia_model.pt",
+        default="weights/v2/best_v2a.pt",
         help="Duong dan toi model",
     )
     parser.add_argument("--port", type=int, default=7860, help="Port chay server")

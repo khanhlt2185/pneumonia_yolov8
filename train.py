@@ -85,6 +85,29 @@ def parse_args():
         default="pneumonia",
         help="Ten thu muc thi nghiem con ben trong --project",
     )
+    parser.add_argument(
+        "--export",
+        type=str,
+        default=None,
+        help="Duong dan file de chep best.pt ra ngoai thu muc chay. "
+             "Neu khong truyen, chi in thong bao va KHONG chep file nao.",
+    )
+    parser.add_argument(
+        "--overwrite-export",
+        action="store_true",
+        help="Cho phep ghi de neu file dich da ton tai (chi co hieu luc khi dung --export).",
+    )
+    parser.add_argument(
+        "--seed",
+        type=int,
+        default=SEED,
+        help=f"Hat giong ngau nhien (mac dinh: {SEED})",
+    )
+    parser.add_argument(
+        "--skip-test-eval",
+        action="store_true",
+        help="Bo qua danh gia tren tap test sau huan luyen (mac dinh: van danh gia).",
+    )
     return parser.parse_args()
 
 
@@ -181,7 +204,7 @@ def train(args):
     print(f"\n[*] Dang tai mo hinh pretrained: {args.model}")
     model = YOLO(args.model)
 
-    # Buoc 3: Hien thi toan bo cau hinh huan luyen
+    # Buoc 3: Hien thi toan bo cau hinh huan luyen (toan bo tham so thuc su truyen vao model.train)
     print(f"\n{'─' * 60}")
     print(f"  CAU HINH HUAN LUYEN")
     print(f"{'─' * 60}")
@@ -191,17 +214,38 @@ def train(args):
     print(f"  Batch size    : {args.batch}")
     print(f"  Image size    : {args.imgsz}x{args.imgsz}")
     print(f"  Patience (ES) : {args.patience} epochs")
-    print(f"  Random Seed   : {SEED}")
+    print(f"  Random Seed   : {args.seed}")
     print(f"  Device        : {args.device if args.device else 'auto'}")
+    print(f"  Project       : {args.project}")
+    print(f"  Name          : {args.name}")
+    print(f"  exist_ok      : True")
+    print(f"{'─' * 60}")
+    print(f"  SIEU THAM SO OPTIMIZER")
+    print(f"{'─' * 60}")
+    print(f"  optimizer     = AdamW")
+    print(f"  lr0           = 0.001")
+    print(f"  lrf           = 0.01")
+    print(f"  weight_decay  = 0.0005")
+    print(f"  warmup_epochs = 3")
     print(f"{'─' * 60}")
     print(f"  RANG BUOC AUGMENTATION Y KHOA")
     print(f"{'─' * 60}")
-    print(f"  fliplr  = 0.0  | KHONG lat ngang (bao toan vi tri bong tim)")
-    print(f"  flipud  = 0.0  | KHONG lat doc (giu dung chieu trong luc)")
-    print(f"  hsv_h   = 0.0  | KHONG doi sac mau (X-quang la grayscale)")
-    print(f"  hsv_s   = 0.0  | KHONG doi do bao hoa (grayscale)")
-    print(f"  hsv_v   = 0.2  | Cho phep dao dong do sang +-20%")
-    print(f"  degrees = 10.0 | Cho phep xoay nhe +-10 do")
+    print(f"  fliplr        = 0.0   | KHONG lat ngang (bao toan vi tri bong tim)")
+    print(f"  flipud        = 0.0   | KHONG lat doc (giu dung chieu trong luc)")
+    print(f"  hsv_h         = 0.0   | KHONG doi sac mau (X-quang la grayscale)")
+    print(f"  hsv_s         = 0.0   | KHONG doi do bao hoa (grayscale)")
+    print(f"  hsv_v         = 0.2   | Cho phep dao dong do sang +-20%")
+    print(f"  degrees       = 10.0  | Cho phep xoay nhe +-10 do")
+    print(f"  translate     = 0.1   | Dich chuyen nhe 10%")
+    print(f"  scale         = 0.1   | Phong to/thu nho nhe 10%")
+    print(f"{'─' * 60}")
+    print(f"  TUY CHON XUAT FILE")
+    print(f"{'─' * 60}")
+    print(f"  --export         : {args.export if args.export else '(khong truyen — se KHONG chep best.pt ra ngoai)'}")
+    print(f"  --overwrite-exp. : {getattr(args, 'overwrite_export', False)}")
+    print(f"  --skip-test-eval : {getattr(args, 'skip_test_eval', False)}")
+    print(f"  verbose          : True")
+    print(f"  plots            : True")
     print(f"{'─' * 60}\n")
 
     # Buoc 4: Thuc hien huan luyen
@@ -214,7 +258,7 @@ def train(args):
         project=args.project,
         name=args.name,
         exist_ok=True,
-        seed=SEED,
+        seed=args.seed,
 
         # ========================================================
         # EARLY STOPPING — Dung som neu khong co cai thien
@@ -298,22 +342,40 @@ def train(args):
             best_src = nested_path
             print(f"[!] Phat hien thu muc long: {nested_path}")
 
-    # Sao chep best.pt ra thu muc goc de tien su dung
-    best_dst = Path("best_pneumonia_model.pt")
-    if best_src.exists():
-        shutil.copy2(best_src, best_dst)
-        print(f"[+] Da sao chep trong so tot nhat:")
-        print(f"    Nguon : {best_src.resolve()}")
-        print(f"    Dich  : {best_dst.resolve()}")
+    # Sao chep best.pt ra ngoai theo --export (neu co)
+    exported_path = None  # None = khong chep
+    if args.export:
+        export_dst = Path(args.export)
+        if export_dst.exists() and not args.overwrite_export:
+            print(
+                f"[!] TU CHOI: File dich '{export_dst.resolve()}' da ton tai.\n"
+                f"    Them --overwrite-export de cho phep ghi de."
+            )
+        elif best_src.exists():
+            export_dst.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(best_src, export_dst)
+            exported_path = export_dst.resolve()
+            print(f"[+] Da chep best.pt ra ngoai:")
+            print(f"    Nguon : {best_src.resolve()}")
+            print(f"    Dich  : {exported_path}")
+        else:
+            print("[!] Canh bao: Khong tim thay file best.pt — khong the chep ra --export.")
+            print(f"    Da kiem tra: {best_src}")
     else:
-        print("[!] Canh bao: Khong tim thay file best.pt sau huan luyen!")
-        print(f"    Da kiem tra: {best_src}")
+        print("[*] --export khong duoc truyen — KHONG chep best.pt ra ngoai thu muc chay.")
+        if best_src.exists():
+            print(f"    best.pt luu tai: {best_src.resolve()}")
+        else:
+            print(f"[!] Canh bao: Khong tim thay file best.pt sau huan luyen!")
+            print(f"    Da kiem tra: {best_src}")
 
     # ============================================================
-    # DANH GIA TREN TAP TEST (neu co)
+    # DANH GIA TREN TAP TEST (neu co, co the tat bang --skip-test-eval)
     # ============================================================
     test_path = data_path / "test"
-    if test_path.exists() and best_src.exists():
+    if args.skip_test_eval:
+        print("\n[*] --skip-test-eval: Bo qua danh gia tren tap test.")
+    elif test_path.exists() and best_src.exists():
         print("\n" + "-" * 60)
         print("  DANH GIA NHANH TREN TAP TEST (624 anh)")
         print("-" * 60)
@@ -338,7 +400,11 @@ def train(args):
     print("  TONG KET")
     print("=" * 60)
     print(f"  Ket qua huan luyen : {Path(args.project).resolve() / args.name}")
-    print(f"  Trong so tot nhat  : {best_dst.resolve()}")
+    print(f"  best.pt goc        : {best_src.resolve() if best_src.exists() else '(khong tim thay)'}")
+    if exported_path:
+        print(f"  Da chep ra         : {exported_path}")
+    else:
+        print(f"  Chep ra ngoai      : (khong chep — --export khong duoc truyen hoac bi tu choi)")
     print(f"  De danh gia chi tiet, chay: python evaluate.py --data {args.data}")
     print(f"  De chay web demo, chay   : python app.py")
     print("=" * 60 + "\n")

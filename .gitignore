@@ -91,4 +91,19 @@ temp/
 .DS_Store
 Thumbs.db
 desktop.ini
-
+# ==========================================
+# 9. AI Agents & Skills Configuration
+# ==========================================
+.agents/
+AGENTS.md
+skills-lock.json
+chest_xray/
+dataset/
+dataset_v2/
+runs/
+weights/
+*.cache
+__pycache__/
+.pytest_cache/
+node_modules/
+_raw_backup/

@@ -59,3 +59,43 @@ class SampleListResponse(BaseModel):
 
     success: bool = True
     samples: List[SampleItem] = Field(..., description="Danh sách 4-6 ảnh mẫu")
+
+
+class CropBox(BaseModel):
+    """Tọa độ hộp cắt trung tâm tương ứng với CenterCrop trên ảnh gốc."""
+
+    x0: int = Field(..., description="Tọa độ x góc trên bên trái")
+    y0: int = Field(..., description="Tọa độ y góc trên bên trái")
+    x1: int = Field(..., description="Tọa độ x góc dưới bên phải")
+    y1: int = Field(..., description="Tọa độ y góc dưới bên phải")
+
+
+class ImageSize(BaseModel):
+    """Kích thước chiều rộng và chiều cao ảnh gốc."""
+
+    width: int = Field(..., description="Chiều rộng ảnh (pixel)")
+    height: int = Field(..., description="Chiều cao ảnh (pixel)")
+
+
+class ExplainResult(BaseModel):
+    """
+    Kết quả giải thích Grad-CAM phục vụ nghiên cứu và hỗ trợ sàng lọc.
+    Tuân thủ nghiêm ngặt nguyên tắc đạo đức y tế:
+    - Không khẳng định vị trí tổn thương lâm sàng.
+    - Chú thích rõ ràng vùng chú ý của mô hình.
+    """
+
+    heatmap_base64: str = Field(..., description="Chuỗi Base64 ảnh heatmap PNG-RGBA (không có tiền tố data:)")
+    crop_box: CropBox = Field(..., description="Hộp cắt tương ứng vùng mô hình quan sát")
+    colormap: str = Field(..., description="Bảng màu hiển thị (turbo hoặc viridis)")
+    is_empty: bool = Field(..., description="Cờ đánh dấu bản đồ nhiệt không có tín hiệu nổi bật")
+    empty_message: Optional[str] = Field(None, description="Thông điệp cảnh báo nếu bản đồ rỗng")
+    raw_peak: float = Field(..., description="Giá trị cực đại của activation map trước khi chuẩn hóa")
+    target_class: str = Field(..., description="Tên lớp được giải thích")
+    target_layer: str = Field(..., description="Tên lớp mạng được hook activation")
+    image_size: ImageSize = Field(..., description="Kích thước gốc của ảnh đầu vào")
+    attention_note: str = Field(
+        "Vùng mô hình chú ý — không phải bằng chứng lâm sàng",
+        description="Lưu ý y tế bắt buộc",
+    )
+

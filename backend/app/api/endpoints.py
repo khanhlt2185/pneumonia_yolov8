@@ -10,18 +10,20 @@ import os
 from pathlib import Path
 from typing import Any, Dict, List
 
-from fastapi import APIRouter, File, HTTPException, UploadFile, status
+from fastapi import APIRouter, File, HTTPException, Query, UploadFile, status
 from fastapi.responses import JSONResponse
 from starlette.concurrency import run_in_threadpool
 
 from backend.app.core.config import settings
 from backend.app.schemas.prediction import (
     ErrorResponse,
+    ExplainResult,
     HealthResponse,
     PredictionSuccessResponse,
     SampleItem,
     SampleListResponse,
 )
+from backend.app.services.cam_service import CamService
 from backend.app.services.predictor import ImageValidationError, PredictorService
 
 router = APIRouter(prefix="/api/v1")
@@ -47,18 +49,21 @@ async def health_check() -> HealthResponse:
 
 @router.post(
     "/predict",
-    response_model=PredictionSuccessResponse,
+    response_model=None,
     responses={
+        200: {"model": PredictionSuccessResponse, "description": "Suy luận thành công"},
         400: {"model": ErrorResponse, "description": "Dữ liệu yêu cầu không hợp lệ"},
         413: {"model": ErrorResponse, "description": "Dung lượng file vượt quá giới hạn"},
         415: {"model": ErrorResponse, "description": "Định dạng file không được hỗ trợ"},
         500: {"model": ErrorResponse, "description": "Lỗi nội bộ server"},
+        503: {"model": ErrorResponse, "description": "Dịch vụ giải thích không khả dụng"},
     },
     summary="Dự đoán phân loại viêm phổi từ ảnh X-quang",
-    description="Nhận file ảnh X-quang (jpg/jpeg/png), thực hiện tiền xử lý CLAHE và suy luận mô hình.",
+    description="Nhận file ảnh X-quang (jpg/jpeg/png), thực hiện tiền xử lý CLAHE, suy luận mô hình và tùy chọn giải thích Grad-CAM.",
 )
 async def predict_image(
     file: UploadFile = File(..., description="File ảnh X-quang ngực cần phân tích"),
+    explain: bool = Query(False, description="Tùy chọn yêu cầu giải thích Grad-CAM"),
 ) -> Any:
     """Nhận file ảnh tải lên, giải mã, chạy tiền xử lý CLAHE và suy luận mô hình."""
     # 1. Kiểm tra phần mở rộng định dạng file cơ bản
@@ -96,6 +101,29 @@ async def predict_image(
     predictor = PredictorService.get_instance()
     try:
         result = await run_in_threadpool(predictor.predict, contents)
+
+        # 5. Nếu yêu cầu giải thích Grad-CAM
+        if explain:
+            cam_svc = CamService.get_instance()
+            if not cam_svc.is_ready:
+                return JSONResponse(
+                    status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                    content={
+                        "success": False,
+                        "error": "Dịch vụ giải thích Grad-CAM chưa sẵn sàng hoặc tạm thời không khả dụng.",
+                    },
+                )
+
+            # Lấy class_idx bằng cách đảo predictor.classes ngay trong endpoint
+            inv_classes = {v: k for k, v in predictor.classes.items()}
+            prediction_label = result.get("prediction", "")
+            class_idx = inv_classes.get(prediction_label, 0)
+
+            cam_res = await run_in_threadpool(cam_svc.explain, contents, class_idx)
+            # Kiểm tra và xác thực bằng ExplainResult schema
+            validated_explain = ExplainResult(**cam_res).model_dump()
+            result["explain"] = validated_explain
+
         return result
     except ImageValidationError as e:
         return JSONResponse(

@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import List
 from dotenv import load_dotenv
 
-# Xác định thư mục gốc dự án (thư mục chứa file best_pneumonia_model.pt và SPEC.md)
+# Xác định thư mục gốc dự án (thư mục chứa SPEC.md và thư mục weights/)
 # backend/app/core/config.py -> parents[3] là thư mục doAn
 CURRENT_FILE = Path(__file__).resolve()
 PROJECT_ROOT = CURRENT_FILE.parents[3]
@@ -34,7 +34,7 @@ class Settings:
 
     # Đường dẫn mô hình YOLOv8-cls
     # Tính từ thư mục gốc dự án, không phụ thuộc vào thư mục chạy lệnh
-    _raw_model_path: str = os.getenv("MODEL_PATH", "best_pneumonia_model.pt")
+    _raw_model_path: str = os.getenv("MODEL_PATH", "weights/v2/best_v2a.pt")
     MODEL_PATH: Path = (
         Path(_raw_model_path)
         if Path(_raw_model_path).is_absolute()
@@ -62,6 +62,10 @@ class Settings:
 
     # Kích thước ảnh đầu vào YOLOv8 mặc định
     IMGSZ: int = 224
+
+    # Cấu hình Grad-CAM
+    CAM_LAYER: str = os.getenv("CAM_LAYER", "model.9.conv")
+    CAM_COLORMAP: str = os.getenv("CAM_COLORMAP", "turbo")
 
     # Định dạng ảnh hợp lệ
     VALID_EXTENSIONS: set = {".jpg", ".jpeg", ".png"}

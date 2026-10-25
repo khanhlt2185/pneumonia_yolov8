@@ -20,6 +20,7 @@ from fastapi.staticfiles import StaticFiles
 
 from backend.app.api.endpoints import router as api_router
 from backend.app.core.config import settings
+from backend.app.services.cam_service import CamService
 from backend.app.services.predictor import PredictorService
 
 
@@ -27,11 +28,20 @@ from backend.app.services.predictor import PredictorService
 async def lifespan(app: FastAPI):
     """
     Quản lý vòng đời khởi động và tắt của ứng dụng FastAPI.
-    Nạp mô hình YOLOv8-cls đúng 1 lần khi server khởi động (Singleton).
+    Nạp mô hình YOLOv8-cls đúng 1 lần khi server khởi động (Singleton),
+    sau đó nạp bản sao dịch vụ giải thích Grad-CAM với khả năng phục hồi lỗi.
     """
     print("[*] Đang khởi động hệ thống Backend và nạp mô hình...")
     predictor = PredictorService.get_instance()
     predictor.initialize()
+
+    # Khởi động CamService trong try/except để không làm gián đoạn dịch vụ chính
+    try:
+        cam_svc = CamService.get_instance()
+        cam_svc.initialize()
+    except Exception as e:
+        print(f"[!] Cảnh báo khởi động CamService thất bại: {e}")
+
     yield
     print("[*] Đang tắt hệ thống Backend...")
 

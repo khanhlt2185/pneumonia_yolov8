@@ -1,0 +1,51 @@
+[+] PredictorService đã sẵn sàng: Device=cuda, Classes={0: 'NORMAL', 1: 'PNEUMONIA'}, Model=best_v2a.pt
+[+] CamService đã sẵn sàng: Device=cuda, Layer=model.9.conv
+Số ảnh test theo nhóm: {'FP': 109, 'TN': 125, 'TP': 390, 'FN': 0}
+
+Tỷ lệ đỉnh nằm ở hàng/cột ngoài cùng (kỳ vọng nếu phân bố đều: vòng ngoài ≈ 49%, mỗi hàng/cột ngoài cùng ≈ 14%)
+nhóm                                  n    bỏ    hàng 0    hàng 6     cột 0     cột 6 vòng ngoài
+FP (ảnh thật, mô hình đã học)       109     0       19%       18%        0%       18%        48%
+TN (ảnh thật, mô hình đã học)       125     0       15%       41%        3%       12%        66%
+TP (ảnh thật, mô hình đã học)       390     0        7%       22%        3%       26%        45%
+Đối chứng: nhiễu (mô hình đã học)   100     0        0%       27%        0%        0%        27%
+Đối chứng: dốc sáng (mô hình đã học)  100     0        0%       51%        0%        0%        51%
+Đối chứng: ảnh thật, backbone ngẫu nhiên  150     0        5%        3%        2%       13%        21%
+
+Phân bố đỉnh theo hàng (% ảnh; hàng 0 = trên cùng, hàng 6 = dưới cùng; nếu đều: mỗi hàng 14%, hai hàng cuối 29%):
+nhóm                                               0     1     2     3     4     5     6  hàng 5-6
+FP (ảnh thật, mô hình đã học)                    19%    1%    2%    3%    5%   52%   18%       71%
+TN (ảnh thật, mô hình đã học)                    15%    6%    2%    3%    6%   27%   41%       68%
+TP (ảnh thật, mô hình đã học)                     7%    6%    6%    2%    9%   47%   22%       69%
+Đối chứng: nhiễu (mô hình đã học)                 0%    1%   11%    3%    6%   52%   27%       79%
+Đối chứng: dốc sáng (mô hình đã học)              0%    0%    0%    0%    3%   46%   51%       97%
+Đối chứng: ảnh thật, backbone ngẫu nhiên          5%   41%   22%   12%   13%    3%    3%        6%
+
+Bản đồ trung bình đã chuẩn hóa (x100), hàng 0 ở trên, hàng 6 ở dưới:
+  FP:
+      8  31   6   1   3  21   9   | đỉnh ở hàng 0:  19%
+      3  17   3   2   7  12   8   | đỉnh ở hàng 1:   1%
+      0   6   4   9  12   8   8   | đỉnh ở hàng 2:   2%
+      1   7   2  19  30   7   9   | đỉnh ở hàng 3:   3%
+      3  21  11  28  44   9  11   | đỉnh ở hàng 4:   5%
+     10  67  36  25  38  15  44   | đỉnh ở hàng 5:  52%
+      6  24  16  36  44  40  31   | đỉnh ở hàng 6:  18%
+  TN:
+      5  13   3   1   1  10   3   | đỉnh ở hàng 0:  15%
+      5   9   0   0   0   2   1   | đỉnh ở hàng 1:   6%
+      2   1   0   0   5   1   3   | đỉnh ở hàng 2:   2%
+      2   0   0   3   9   0   5   | đỉnh ở hàng 3:   3%
+      1   1   5   7  33   1   3   | đỉnh ở hàng 4:   6%
+      1  20  25   4  17   6  19   | đỉnh ở hàng 5:  27%
+      1  12   9  24  37  27  14   | đỉnh ở hàng 6:  41%
+  TP:
+     13  36  11   3   3  14  11   | đỉnh ở hàng 0:   7%
+     12  34   8   8  16  20  22   | đỉnh ở hàng 1:   6%
+      5  21   8  16  24  26  25   | đỉnh ở hàng 2:   6%
+      7  19   8  24  33  25  24   | đỉnh ở hàng 3:   2%
+     18  45  21  30  37  33  25   | đỉnh ở hàng 4:   9%
+     28  70  38  36  41  46  54   | đỉnh ở hàng 5:  47%
+     13  38  34  48  49  58  56   | đỉnh ở hàng 6:  22%
+
+Cách đọc: so tỷ lệ 'vòng ngoài' và 'hàng 6' của ảnh thật với các đối chứng.
+  Giống đối chứng: xu hướng dồn về viền chủ yếu do kiến trúc/đệm biên, không do nội dung ảnh.
+  Cao hơn hẳn đối chứng: nội dung ảnh (vùng cơ hoành, bụng) đóng góp; vẫn chưa chứng minh mô hình hiểu bệnh lý.

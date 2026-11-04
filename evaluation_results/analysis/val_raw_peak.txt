@@ -1,0 +1,11 @@
+raw_peak của bản đồ PNEUMONIA trên tập VAL, ngưỡng p >= 0.85, mô hình weights/v2/best_v2a.pt
+nhóm      n      p10      p50      p90
+TP      638    0.402    0.646    0.945
+FN       13    0.120    0.231    0.395
+FP        4    0.344    0.379    0.463
+TN      250    0.003    0.080    0.213
+
+WEAK_PEAK = 0.402   (phân vị 10 của TP)
+REF_PEAK  = 0.945   (phân vị 90 của TP)
+Tỷ lệ nằm dưới WEAK_PEAK: TP 10% (theo định nghĩa ~10%), FP 50%, TN 98%
+Chỉ dùng hai hằng số này trong giao diện; không chỉnh theo test.

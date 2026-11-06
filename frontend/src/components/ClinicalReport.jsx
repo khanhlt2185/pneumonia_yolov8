@@ -5,9 +5,21 @@ import {
   RotateCcw,
   FileText,
   Activity,
+  Layers,
 } from 'lucide-react';
+import { UNCERTAIN_BELOW } from '../config/cam';
 
-export default function ClinicalReport({ result, isLoading, onReset }) {
+export default function ClinicalReport({
+  result,
+  isLoading,
+  onReset,
+  explainResult,
+  isExplaining = false,
+  canExplain = true,
+  showHeatmap = false,
+  onToggleHeatmap,
+  onExplain,
+}) {
   // Trạng thái đang tải suy luận
   if (isLoading) {
     return (
@@ -52,8 +64,10 @@ export default function ClinicalReport({ result, isLoading, onReset }) {
   }
 
   const isPneumonia = result.prediction === 'PNEUMONIA';
-  const probNormal = Math.round((result.probabilities?.NORMAL || 0) * 100);
-  const probPneumonia = Math.round((result.probabilities?.PNEUMONIA || 0) * 100);
+  const rawPneumonia = result.probabilities?.PNEUMONIA ?? 0;
+  const pneumoniaPct = Math.round(rawPneumonia * 100);
+  const normalPct = 100 - pneumoniaPct;
+  const isUncertain = isPneumonia && rawPneumonia < UNCERTAIN_BELOW;
 
   return (
     <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs p-6 sm:p-7 space-y-5 transition-colors">
@@ -119,6 +133,11 @@ export default function ClinicalReport({ result, isLoading, onReset }) {
             >
               {isPneumonia ? 'Nghi ngờ viêm phổi' : 'Chưa ghi nhận dấu hiệu nghi ngờ'}
             </h3>
+            {isPneumonia && isUncertain && (
+              <p className="text-xs text-amber-700 dark:text-amber-300 font-medium">
+                Mức tin cậy thấp: xác suất chưa cao, cần bác sĩ chuyên khoa xem xét kỹ.
+              </p>
+            )}
             {!isPneumonia && (
               <p className="text-xs text-emerald-800 dark:text-emerald-300 font-medium">
                 * Lưu ý: Kết quả này không loại trừ bệnh.
@@ -128,12 +147,55 @@ export default function ClinicalReport({ result, isLoading, onReset }) {
         </div>
       </div>
 
+      {/* Nút Xem vùng mô hình chú ý (chỉ hiện khi Nghi ngờ viêm phổi) */}
+      {isPneumonia && (
+        <div className="pt-1 space-y-2">
+          <button
+            id="btn-toggle-cam"
+            type="button"
+            aria-pressed={showHeatmap}
+            disabled={!canExplain || isExplaining}
+            onClick={() => {
+              if (!canExplain || isExplaining) return;
+              if (explainResult) {
+                if (onToggleHeatmap) onToggleHeatmap();
+              } else {
+                if (onExplain) onExplain();
+              }
+            }}
+            className={`w-full py-2.5 px-4 rounded-xl font-semibold text-xs transition-all flex items-center justify-center space-x-2 border cursor-pointer ${
+              showHeatmap
+                ? 'bg-teal-600 text-white border-teal-600 shadow-xs hover:bg-teal-700 dark:bg-teal-600 dark:hover:bg-teal-500'
+                : 'bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 border-slate-300 dark:border-slate-700 hover:bg-teal-50/50 dark:hover:bg-slate-700/60'
+            } ${(!canExplain || isExplaining) ? 'opacity-50 cursor-not-allowed' : ''}`}
+          >
+            {isExplaining ? (
+              <>
+                <div className="w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                <span>Đang phân tích vùng mô hình chú ý...</span>
+              </>
+            ) : (
+              <>
+                <Layers className="h-4 w-4" />
+                <span>{showHeatmap ? 'Ẩn vùng mô hình chú ý' : 'Xem vùng mô hình chú ý'}</span>
+              </>
+            )}
+          </button>
+
+          {!canExplain && (
+            <p className="text-[11px] text-slate-400 dark:text-slate-500 text-center">
+              Không có ảnh gốc của mục lịch sử để giải thích
+            </p>
+          )}
+        </div>
+      )}
+
       {/* 3. Phân bổ xác suất dự đoán (NORMAL vs PNEUMONIA) */}
       <div className="space-y-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl p-4 border border-slate-200/80 dark:border-slate-800">
         <div className="flex items-center justify-between text-xs font-semibold text-slate-700 dark:text-slate-300">
           <span>Phân bố xác suất mô hình:</span>
           <span className="font-mono text-slate-900 dark:text-slate-100">
-            {isPneumonia ? `${probPneumonia}% PNEUMONIA` : `${probNormal}% NORMAL`}
+            {isPneumonia ? `${pneumoniaPct}% PNEUMONIA` : `${normalPct}% NORMAL`}
           </span>
         </div>
 
@@ -141,13 +203,13 @@ export default function ClinicalReport({ result, isLoading, onReset }) {
         <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-3 overflow-hidden flex shadow-inner">
           <div
             className="h-full bg-emerald-600 transition-all duration-500"
-            style={{ width: `${probNormal}%` }}
-            title={`NORMAL: ${probNormal}%`}
+            style={{ width: `${normalPct}%` }}
+            title={`NORMAL: ${normalPct}%`}
           />
           <div
             className="h-full bg-rose-600 transition-all duration-500"
-            style={{ width: `${probPneumonia}%` }}
-            title={`PNEUMONIA: ${probPneumonia}%`}
+            style={{ width: `${pneumoniaPct}%` }}
+            title={`PNEUMONIA: ${pneumoniaPct}%`}
           />
         </div>
 
@@ -156,13 +218,13 @@ export default function ClinicalReport({ result, isLoading, onReset }) {
           <div className="bg-white dark:bg-slate-800 p-2.5 rounded-lg border border-slate-200 dark:border-slate-700 flex justify-between items-center">
             <span className="text-slate-500 dark:text-slate-400 font-medium">NORMAL:</span>
             <span className="font-mono font-bold text-slate-800 dark:text-slate-200">
-              {probNormal}%
+              {normalPct}%
             </span>
           </div>
           <div className="bg-white dark:bg-slate-800 p-2.5 rounded-lg border border-slate-200 dark:border-slate-700 flex justify-between items-center">
             <span className="text-slate-500 dark:text-slate-400 font-medium">PNEUMONIA:</span>
             <span className="font-mono font-bold text-slate-800 dark:text-slate-200">
-              {probPneumonia}%
+              {pneumoniaPct}%
             </span>
           </div>
         </div>

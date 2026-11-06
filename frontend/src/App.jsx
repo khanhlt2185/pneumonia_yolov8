@@ -44,6 +44,16 @@ export default function App() {
   const [sessionHistory, setSessionHistory] = useState([]);
   const [toast, setToast] = useState(null);
 
+  // 5. Trạng thái giải thích mô hình (Grad-CAM)
+  const [explainResult, setExplainResult] = useState(null);
+  const [isExplaining, setIsExplaining] = useState(false);
+  const [showHeatmap, setShowHeatmap] = useState(false);
+  const [heatmapOpacity, setHeatmapOpacity] = useState(50);
+  const requestIdRef = useRef(0);
+
+  // Kiểm tra tính khả dụng của file ảnh gốc để gọi giải thích
+  const canExplain = Boolean(selectedFile) && selectedFile.size > 0;
+
   // Quản lý Blob URLs trong bộ nhớ để thu hồi tránh rò rỉ RAM
   const blobUrlsRef = useRef(new Set());
 
@@ -97,6 +107,7 @@ export default function App() {
   const executePrediction = async (fileOrBlob, filename, currentUrl) => {
     setIsLoadingPrediction(true);
     setPredictionResult(null);
+    setExplainResult(null);
 
     try {
       const data = await predictImage(fileOrBlob, filename);
@@ -140,8 +151,13 @@ export default function App() {
 
   // Chọn ảnh từ máy tính (Upload hoặc kéo thả)
   const handleImageSelected = (file) => {
+    requestIdRef.current += 1;
     setSelectedSampleId(null);
     setSelectedFile(file);
+    setExplainResult(null);
+    setIsExplaining(false);
+    setShowHeatmap(false);
+    setHeatmapOpacity(50);
 
     const objectUrl = URL.createObjectURL(file);
     registerBlobUrl(objectUrl);
@@ -152,7 +168,12 @@ export default function App() {
 
   // Chọn ảnh mẫu từ danh sách
   const handleSelectSample = async (sample) => {
+    requestIdRef.current += 1;
     setSelectedSampleId(sample.id);
+    setExplainResult(null);
+    setIsExplaining(false);
+    setShowHeatmap(false);
+    setHeatmapOpacity(50);
 
     const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1';
     const serverBase = apiUrl.replace(/\/api\/v1\/?$/, '');
@@ -180,18 +201,97 @@ export default function App() {
 
   // Chọn xem lại một ca trong lịch sử phiên
   const handleSelectHistoryItem = (item) => {
+    requestIdRef.current += 1;
     setPreviewUrl(item.previewUrl);
     setSelectedFile(new File([], item.fileName));
     setSelectedSampleId(null);
     setPredictionResult(item.predictionResult);
+    setExplainResult(null);
+    setIsExplaining(false);
+    setShowHeatmap(false);
+    setHeatmapOpacity(50);
   };
 
-  // Đặt lại trạng thái (Phân tích ảnh khác)
+  // Đặt lại trạng thái (Phân tích ảnh khác / Xóa ảnh)
   const handleReset = () => {
+    requestIdRef.current += 1;
     setPreviewUrl(null);
     setSelectedFile(null);
     setSelectedSampleId(null);
     setPredictionResult(null);
+    setExplainResult(null);
+    setIsExplaining(false);
+    setShowHeatmap(false);
+    setHeatmapOpacity(50);
+  };
+
+  // Yêu cầu giải thích mô hình (Grad-CAM) cho ảnh hiện tại
+  const handleExplain = async () => {
+    if (!canExplain || isExplaining || !selectedFile) return;
+
+    const currentReqId = requestIdRef.current;
+    setIsExplaining(true);
+    try {
+      const data = await predictImage(selectedFile, selectedFile.name || 'xray.jpeg', { explain: true });
+
+      // Bỏ kết quả nếu khi trả về bộ đếm đã khác (chống kết quả đến muộn)
+      if (requestIdRef.current !== currentReqId) {
+        return;
+      }
+
+      if (data && data.success) {
+        // Nếu data.prediction khác nhãn của predictionResult hiện tại thì không lưu và báo lỗi
+        if (predictionResult && data.prediction !== predictionResult.prediction) {
+          setToast({
+            message: 'Kết quả giải thích không khớp kết quả dự đoán; vui lòng thử lại',
+            type: 'error',
+          });
+          return;
+        }
+
+        // Nếu phản hồi không có data.explain thì không lưu mà báo lỗi
+        if (!data.explain) {
+          setToast({
+            message: 'Kết quả giải thích không hợp lệ; vui lòng thử lại',
+            type: 'error',
+          });
+          return;
+        }
+
+        // Chỉ lưu data.explain vào explainResult, KHÔNG ghi đè predictionResult
+        setExplainResult(data.explain);
+        setShowHeatmap(true);
+      } else {
+        setToast({
+          message: data?.error || 'Dịch vụ giải thích tạm thời không khả dụng',
+          type: 'error',
+        });
+      }
+    } catch (err) {
+      if (requestIdRef.current !== currentReqId) {
+        return;
+      }
+      console.error('Explain request error:', err);
+      const errorMsg =
+        err.response?.data?.error ||
+        err.message ||
+        'Dịch vụ giải thích tạm thời không khả dụng';
+      setToast({ message: errorMsg, type: 'error' });
+    } finally {
+      if (requestIdRef.current === currentReqId) {
+        setIsExplaining(false);
+      }
+    }
+  };
+
+  // Bật/tắt hiển thị lớp phủ mô hình chú ý
+  const handleToggleHeatmap = () => {
+    if (!canExplain || isExplaining) return;
+    if (explainResult) {
+      setShowHeatmap((prev) => !prev);
+    } else {
+      handleExplain();
+    }
   };
 
   // Xóa lịch sử phiên trong RAM
@@ -221,7 +321,14 @@ export default function App() {
             <XrayStudio
               selectedFile={selectedFile}
               previewUrl={previewUrl}
-              predictionResult={predictionResult}
+              explainResult={explainResult}
+              isExplaining={isExplaining}
+              canExplain={canExplain}
+              showHeatmap={showHeatmap}
+              heatmapOpacity={heatmapOpacity}
+              onHeatmapOpacityChange={setHeatmapOpacity}
+              onToggleHeatmap={handleToggleHeatmap}
+              onExplain={handleExplain}
               onImageSelected={handleImageSelected}
               onClearImage={handleReset}
               isLoadingPrediction={isLoadingPrediction}
@@ -239,6 +346,13 @@ export default function App() {
               result={predictionResult}
               isLoading={isLoadingPrediction}
               onReset={handleReset}
+              explainResult={explainResult}
+              isExplaining={isExplaining}
+              canExplain={canExplain}
+              showHeatmap={showHeatmap}
+              onToggleHeatmap={handleToggleHeatmap}
+              onExplain={handleExplain}
+              onError={(errMsg) => setToast({ message: errMsg, type: 'error' })}
             />
           </div>
         </div>

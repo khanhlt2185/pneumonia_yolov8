@@ -13,7 +13,7 @@ export default function DisclaimerBanner() {
         </div>
         <p className="text-xs sm:text-sm text-amber-900 dark:text-amber-200 font-medium leading-relaxed">
           <strong className="font-semibold text-amber-950 dark:text-amber-100">Khuyến cáo: </strong>
-          Công cụ hỗ trợ sàng lọc phục vụ nghiên cứu, không thay thế chẩn đoán của bác sĩ.
+          Công cụ hỗ trợ sàng lọc phục vụ nghiên cứu, không thay thế chẩn đoán của bác sĩ. Mô hình được huấn luyện trên ảnh X-quang ngực trẻ em 1-5 tuổi từ một cơ sở; kết quả với ảnh ngoài phạm vi này không đáng tin.
         </p>
       </div>
     </aside>

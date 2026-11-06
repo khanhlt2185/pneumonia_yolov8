@@ -45,13 +45,31 @@ export const fetchImageBlob = async (relativeUrl) => {
  * Gửi ảnh lên backend để thực hiện suy luận mô hình.
  * @param {File|Blob} fileOrBlob - File hoặc Blob của ảnh X-quang
  * @param {string} filename - Tên file
+ * @param {Object} [options] - Tùy chọn (ví dụ: { explain: boolean })
  */
-export const predictImage = async (fileOrBlob, filename = 'xray.jpeg') => {
+export const predictImage = async (fileOrBlob, filename = 'xray.jpeg', options = {}) => {
   const formData = new FormData();
   formData.append('file', fileOrBlob, filename);
 
-  const response = await apiClient.post('/predict', formData);
-  return response.data;
+  const url = options?.explain ? '/predict?explain=true' : '/predict';
+  try {
+    const response = await apiClient.post(url, formData);
+    return response.data;
+  } catch (err) {
+    if (options?.explain && err.response?.status === 503) {
+      const customError = new Error('Dịch vụ giải thích tạm thời không khả dụng');
+      customError.status = 503;
+      customError.response = {
+        ...err.response,
+        data: {
+          ...err.response?.data,
+          error: 'Dịch vụ giải thích tạm thời không khả dụng',
+        },
+      };
+      throw customError;
+    }
+    throw err;
+  }
 };
 
 export default apiClient;

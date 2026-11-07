@@ -1,0 +1,37 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python -m pytest *)",
+      "Bash(git status*)",
+      "Bash(git diff*)",
+      "Bash(git log*)",
+      "Bash(git branch*)",
+      "Bash(git add *)",
+      "Bash(git commit *)"
+    ],
+    "ask": [
+      "Bash(git push*)",
+      "Bash(git merge*)",
+      "Bash(git checkout*)",
+      "Bash(git reset*)",
+      "Bash(pip install*)",
+      "Bash(npm install*)"
+    ],
+    "deny": [
+      "Read(./.env*)",
+      "Edit(./chest_xray/**)",
+      "Edit(./dataset/**)",
+      "Edit(./dataset_v2/**)",
+      "Edit(./weights/**)",
+      "Edit(./runs/**)",
+      "Edit(./best_pneumonia_model.pt)",
+      "Bash(rm *)",
+      "Bash(Remove-Item *)",
+      "Read(./audit_files.csv)",
+      "Read(./audit_v2_files.csv)",
+      "Read(./dataset_v2_manifest.csv)",
+      "Read(./evaluation_results/analysis/*.csv)",
+      "Read(./scratch/**)"
+    ]
+  }
+}

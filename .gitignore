@@ -95,7 +95,6 @@ desktop.ini
 # 9. AI Agents & Skills Configuration
 # ==========================================
 .agents/
-AGENTS.md
 skills-lock.json
 chest_xray/
 dataset/
@@ -107,3 +106,8 @@ __pycache__/
 .pytest_cache/
 node_modules/
 _raw_backup/
+scratch/
+.claude/skills/
+.claude/settings.local.json
+evaluation_results/v1_on_v1/
+evaluation_results/**/sample_predictions.png
